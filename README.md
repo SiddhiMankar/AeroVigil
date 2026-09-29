@@ -1,4 +1,4 @@
-# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1–5)
+# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1–6)
 
 **AeroVigil DT** is an AI-enabled real-time Digital Twin architecture for health monitoring, fault prediction, and mission reliability enhancement of Aero-Piston Engines used in Medium-Altitude Long-Endurance (MALE) Unmanned Aerial Vehicles (UAVs).
 
@@ -65,6 +65,9 @@
 * **Phase 5 — Real-Time Digital Twin Dashboard & Mission Replay**:
   Implements an interactive web application (`app.py`) built with Streamlit. Exposes the complete analytical pipeline, KPI metrics, live telemetry cards, Digital Twin observed vs expected charts, residual signatures, health trajectories, RUL countdowns, mission risk timelines, explainable fault diagnostics, mission replay slider, and cross-scenario evaluation comparison matrices.
 
+* **Phase 6 — Final Engineering Hardening, Validation Evidence & SIH Submission Readiness**:
+  Implements Streamlit state caching (`@st.cache_data` in `src/dashboard_utils.py`), a deterministic CLI demonstration script (`scripts/run_demo.py`), a 2-minute evaluator walkthrough guide (`docs/demo_walkthrough.md`), an empirical cross-scenario validation summary (`docs/validation_summary.md`), and verifies repository consistency and end-to-end defensibility.
+
 ---
 
 ## 2. Synthetic Data & Prototype Disclaimer
@@ -74,19 +77,29 @@
 
 ---
 
-## 3. Running the Streamlit Dashboard
+## 3. Quick Start & Demonstrations
 
 ### Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Launch Dashboard
+### 1. Run Automated Test Suite (47 Tests)
+```bash
+python -m pytest tests/ -v
+```
+
+### 2. Run Reproducible Terminal Demo
+```bash
+python scripts/run_demo.py
+```
+
+### 3. Launch Streamlit Dashboard
 ```bash
 streamlit run app.py
 ```
 
-Upon launching, the dashboard defaults to **Overheating Thermal Fault** (Seed 42). Use the sidebar to switch scenarios, adjust mission duration, step through the **Mission Replay Slider**, or inspect the **Cross-Scenario Evaluation Matrix**.
+Upon launching, the dashboard defaults to **Overheating Thermal Fault** (Seed 42). Use the sidebar to switch scenarios, adjust mission duration, step through the **Mission Replay Slider**, or inspect the **Cross-Scenario Evaluation Matrix**. Refer to [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) for step-by-step evaluator instructions.
 
 ---
 
@@ -139,6 +152,7 @@ aerovigil-dt/
 │   ├── vibration_fault.csv        # Mechanical vibration & jitter telemetry (1200 rows)
 │   └── sensor_drift.csv           # Isolated sensor bias telemetry (1200 rows)
 ├── scripts/
+│   ├── run_demo.py                # Reproducible CLI demonstration script
 │   ├── generate_datasets.py       # Script to generate CSV datasets in data/
 │   ├── validate_visuals.py        # Simulator visual validation script
 │   ├── validate_digital_twin.py   # Digital Twin validation & plotting script
@@ -151,6 +165,8 @@ aerovigil-dt/
 │   ├── test_health_rul_risk.py    # Phase 4 Health Index, RUL & Risk test suite (10 tests)
 │   └── test_dashboard_pipeline.py # Phase 5 Dashboard integration test suite (10 tests)
 └── docs/
+    ├── demo_walkthrough.md        # 2-minute evaluator walkthrough guide
+    ├── validation_summary.md      # Phase 6 empirical cross-scenario validation summary
     ├── telemetry_spec.md          # Telemetry signal & physics specification
     ├── digital_twin_model.md      # Digital Twin model equations & residual specification
     ├── residual_analysis.md       # Residual analysis, rule signatures & severity specification

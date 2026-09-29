@@ -30,12 +30,21 @@ SCENARIO_DISPLAY_NAMES: Dict[str, str] = {
 
 SCENARIO_NAME_MAP: Dict[str, str] = {v: k for k, v in SCENARIO_DISPLAY_NAMES.items()}
 
+try:
+    import streamlit as st
+    cache_data = st.cache_data
+except Exception:
+    def cache_data(func):
+        return func
 
+
+@cache_data
 def run_cached_simulation(
     scenario: str,
     duration_minutes: float = 20.0,
     seed: int = 42,
 ) -> pd.DataFrame:
+
     """
     Executes telemetry generation and full AeroVigil DT pipeline processing.
     """
@@ -126,6 +135,7 @@ def extract_snapshot_at_index(df: pd.DataFrame, idx: int) -> Dict[str, Union[flo
     return snapshot
 
 
+@cache_data
 def generate_scenario_comparison(duration_minutes: float = 20.0, seed: int = 42) -> pd.DataFrame:
     """
     Runs the pipeline across all 5 scenarios and returns a comparison summary table.
