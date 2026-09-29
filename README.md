@@ -1,10 +1,10 @@
-# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1, 2, 3 & 4)
+# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1–5)
 
 **AeroVigil DT** is an AI-enabled real-time Digital Twin architecture for health monitoring, fault prediction, and mission reliability enhancement of Aero-Piston Engines used in Medium-Altitude Long-Endurance (MALE) Unmanned Aerial Vehicles (UAVs).
 
 ---
 
-## Complete System Pipeline
+## End-to-End Architecture
 
 ```text
   Synthetic Aero-Engine Telemetry
@@ -42,7 +42,8 @@
  (Flight-Phase Aware Risk Score & Advisory)
                  │
                  ▼
-  [Phase 5: Real-Time Dashboard & Replay]
+   Streamlit Real-Time Dashboard & Replay
+         (app.py & Mission Controls)
 ```
 
 ---
@@ -59,10 +60,10 @@
   Implements an explainable diagnostic engine (`src/residual_analysis.py`). Evaluates normalized residuals ($\mathbf{z}$), applies sliding temporal persistence, calculates global anomaly scores ($0 - 100$), computes diagnostic severity levels, classifies fault types (`NORMAL`, `OVERHEATING`, `LUBRICATION_FAULT`, `VIBRATION_ANOMALY`, `SENSOR_DRIFT`, `UNKNOWN_ANOMALY`), isolates sensor drift from physical thermal failures, and transparently provides evidence scores ($0.0 - 1.0$) and contributing signal explanations.
 
 * **Phase 4 — Engine Health Index, Prototype RUL Estimation & Mission Risk**:
-  Implements the operational decision layer:
-  1. **Engine Health Index** (`src/health_index.py`): Continuous $0 - 100$ health index, health state categorization (`HEALTHY`, `DEGRADED`, `WARNING`, `SEVERE`, `CRITICAL`), and trend tracking.
-  2. **Prototype RUL Estimator** (`src/rul_estimator.py`): Projects remaining useful time in seconds and minutes based on recent health degradation slope ($\frac{dH}{dt}$).
-  3. **Mission Risk Model** (`src/mission_risk.py`): Flight-phase aware risk score ($0 - 100$) and prototype operational advisories (`CONTINUE_MONITORING`, `INCREASE_MONITORING`, `INSPECT_AT_NEXT_OPPORTUNITY`, `CONSIDER_MISSION_ABORT`).
+  Implements the operational decision layer (`src/health_index.py`, `src/rul_estimator.py`, `src/mission_risk.py`, `src/health_risk_pipeline.py`) providing continuous Health Index ($0 - 100$), degradation-slope RUL estimation, flight-phase aware mission risk scoring ($0 - 100$), and prototype operational advisories (`CONTINUE_MONITORING`, `INCREASE_MONITORING`, `INSPECT_AT_NEXT_OPPORTUNITY`, `CONSIDER_MISSION_ABORT`).
+
+* **Phase 5 — Real-Time Digital Twin Dashboard & Mission Replay**:
+  Implements an interactive web application (`app.py`) built with Streamlit. Exposes the complete analytical pipeline, KPI metrics, live telemetry cards, Digital Twin observed vs expected charts, residual signatures, health trajectories, RUL countdowns, mission risk timelines, explainable fault diagnostics, mission replay slider, and cross-scenario evaluation comparison matrices.
 
 ---
 
@@ -73,7 +74,23 @@
 
 ---
 
-## 3. Telemetry Signal Definitions & Units
+## 3. Running the Streamlit Dashboard
+
+### Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Launch Dashboard
+```bash
+streamlit run app.py
+```
+
+Upon launching, the dashboard defaults to **Overheating Thermal Fault** (Seed 42). Use the sidebar to switch scenarios, adjust mission duration, step through the **Mission Replay Slider**, or inspect the **Cross-Scenario Evaluation Matrix**.
+
+---
+
+## 4. Telemetry Signal Definitions & Units
 
 The system models 13 time-series signals sampled at configurable rates (default 1 Hz):
 
@@ -95,24 +112,11 @@ The system models 13 time-series signals sampled at configurable rates (default 
 
 ---
 
-## 4. Mission Profile & Injected Fault Scenarios
-
-### Mission Phases
-1. **STARTUP** (0% – 5%), 2. **TAKEOFF** (5% – 10%), 3. **CLIMB** (10% – 25%), 4. **CRUISE** (25% – 55%), 5. **MANEUVER** (55% – 70%), 6. **CRUISE** (70% – 85%), 7. **DESCENT** (85% – 95%), 8. **LANDING** (95% – 100%).
-
-### Fault Scenarios
-1. **`normal`**: Healthy baseline mission telemetry.
-2. **`overheating`**: Cooling airflow blockage / lean fuel mixture (CHT $+65^\circ\text{C}$, EGT $+85^\circ\text{C}$, Oil Temp $+28^\circ\text{C}$).
-3. **`lubrication_fault`**: Oil pump degradation / leak (Oil Press $-34\text{ psi}$ drop, Oil Temp $+36^\circ\text{C}$ rise).
-4. **`vibration_anomaly`**: Cylinder misfire / propeller unbalance ($+0.70\text{ g}$ vibration rise & RPM jitter).
-5. **`sensor_drift`**: Isolated linear bias ($+65^\circ\text{C}$) strictly on CHT sensor probe while correlated physics remain nominal.
-
----
-
 ## 5. Project Structure
 
 ```
 aerovigil-dt/
+├── app.py                         # Streamlit Real-Time Dashboard & Mission Replay App
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
@@ -125,7 +129,8 @@ aerovigil-dt/
 │   ├── health_index.py            # Engine Health Index & State Categorizer
 │   ├── rul_estimator.py           # Prototype RUL Estimator
 │   ├── mission_risk.py            # Phase-Aware Mission Risk & Advisory Model
-│   └── health_risk_pipeline.py    # Integrated End-to-End AeroVigil Pipeline
+│   ├── health_risk_pipeline.py    # Integrated End-to-End AeroVigil Pipeline
+│   └── dashboard_utils.py         # Dashboard Helper Utilities & Cached Processing
 ├── data/
 │   ├── README.md                  # Dataset specifications & disclaimers
 │   ├── normal.csv                 # 20-min normal mission telemetry (1200 rows)
@@ -143,7 +148,8 @@ aerovigil-dt/
 │   ├── test_simulator.py          # Phase 1 simulator test suite (10 tests)
 │   ├── test_digital_twin.py       # Phase 2 Digital Twin test suite (9 tests)
 │   ├── test_residual_analysis.py  # Phase 3 Residual Analysis test suite (8 tests)
-│   └── test_health_rul_risk.py    # Phase 4 Health Index, RUL & Risk test suite (10 tests)
+│   ├── test_health_rul_risk.py    # Phase 4 Health Index, RUL & Risk test suite (10 tests)
+│   └── test_dashboard_pipeline.py # Phase 5 Dashboard integration test suite (10 tests)
 └── docs/
     ├── telemetry_spec.md          # Telemetry signal & physics specification
     ├── digital_twin_model.md      # Digital Twin model equations & residual specification
@@ -163,19 +169,13 @@ aerovigil-dt/
 
 ---
 
-## 6. Running the Pipeline & Generating Data
+## 6. End-to-End Python API Example
 
-### Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### End-to-End Python API Example
 ```python
 from src.simulator import generate_telemetry
 from src.health_risk_pipeline import run_pipeline
 
-# 1. Generate raw telemetry
+# 1. Generate telemetry (e.g., overheating scenario)
 df_raw = generate_telemetry(scenario="overheating", duration_minutes=20.0, seed=42)
 
 # 2. Run full AeroVigil DT pipeline
@@ -190,17 +190,11 @@ print(f"Mission Risk  : {final['mission_risk_score']} ({final['mission_risk_leve
 print(f"Advisory      : {final['mission_recommendation']}")
 ```
 
-### Run Integrated Health, RUL & Risk Validation
-To execute the full pipeline evaluation across all 5 scenarios and generate plots:
-```bash
-python scripts/validate_health_rul_risk.py
-```
-
 ---
 
 ## 7. Running Automated Tests
 
-Run the full pytest suite (37 test cases across Phases 1, 2, 3, and 4):
+Run the full pytest suite (47 test cases across Phases 1–5):
 
 ```bash
 python -m pytest tests/ -v
