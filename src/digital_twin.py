@@ -70,12 +70,20 @@ class DigitalTwin:
         """
         dt = 1.0 / self.sample_rate_hz
 
+        # Initialize thermal states on first step from ambient temperature if step_counter == 0
+        if self.step_counter == 0:
+            self.curr_egt = ambient_temperature + 20.0
+            self.curr_cht = ambient_temperature + 25.0
+            self.curr_oil_temp = ambient_temperature + 15.0
+            self.curr_oil_press = 0.0
+
         # Filter time constants for physics surrogate dynamics
         alpha_rpm = 1.0 - np.exp(-dt / 1.5)
         alpha_egt = 1.0 - np.exp(-dt / 3.0)
         alpha_cht = 1.0 - np.exp(-dt / 35.0)
         alpha_oil_t = 1.0 - np.exp(-dt / 70.0)
         alpha_oil_p = 1.0 - np.exp(-dt / 2.0)
+
 
         # 1. Expected RPM
         if mission_phase == "STARTUP" and self.step_counter < int(15 * self.sample_rate_hz):

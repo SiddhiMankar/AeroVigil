@@ -1,10 +1,10 @@
-# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1 & 2)
+# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1, 2 & 3)
 
 **AeroVigil DT** is an AI-enabled real-time Digital Twin architecture for health monitoring, fault prediction, and mission reliability enhancement of Aero-Piston Engines used in Medium-Altitude Long-Endurance (MALE) Unmanned Aerial Vehicles (UAVs).
 
 ---
 
-## Architecture Overview
+## Pipeline Architecture
 
 ```text
   Synthetic Aero-Engine Telemetry
@@ -22,7 +22,15 @@
     (Residual = Observed - Expected)
                  │
                  ▼
-     [Phase 3: Residual Analysis & Anomaly Detection]
+     Residual Analysis & Anomaly Detection
+  (Normalized Residuals, Persistence, Scoring)
+                 │
+                 ▼
+      Rule-Based Fault Classification
+ (NORMAL, OVERHEATING, LUBRICATION, VIBRATION, SENSOR_DRIFT)
+                 │
+                 ▼
+    [Phase 4: Health Index, RUL & Mission Risk]
 ```
 
 ---
@@ -33,7 +41,10 @@
   Establishes a clean, reproducible repository foundation and implements a physics-correlated synthetic engine telemetry generator supporting 8 flight mission phases and 5 controlled fault scenarios.
 
 * **Phase 2 — Physics-Based Expected-State Model / Digital Twin**:
-  Implements an independent reduced-order physics-informed surrogate estimator (`src/digital_twin.py`). The Digital Twin predicts nominal expected engine states (`expected_*`) based strictly on healthy operating conditions (`throttle`, `ambient_temperature`, `mission_phase`), without inspecting fault labels. It computes raw (`residual_*`) and normalized (`normalized_residual_*`) residuals to enable downstream anomaly detection and sensor vs physical fault isolation.
+  Implements an independent reduced-order physics-informed surrogate estimator (`src/digital_twin.py`) that predicts expected engine states (`expected_*`) strictly from healthy operating conditions without inspecting scenario labels.
+
+* **Phase 3 — Residual Analysis, Anomaly Detection & Fault Classification**:
+  Implements an explainable diagnostic engine (`src/residual_analysis.py`). Evaluates normalized residuals ($\mathbf{z}$), applies sliding temporal persistence, calculates global anomaly scores ($0 - 100$), computes diagnostic severity levels, classifies fault types (`NORMAL`, `OVERHEATING`, `LUBRICATION_FAULT`, `VIBRATION_ANOMALY`, `SENSOR_DRIFT`, `UNKNOWN_ANOMALY`), isolates sensor drift from physical thermal failures, and transparently provides evidence scores ($0.0 - 1.0$) and contributing signal explanations.
 
 ---
 
@@ -66,45 +77,33 @@ The system models 13 time-series signals sampled at configurable rates (default 
 
 ---
 
-## 4. Mission Profile
+## 4. Mission Profile & Injected Fault Scenarios
 
-The flight profile models 8 continuous mission phases with smooth thermodynamic and operator load transitions:
+### Mission Phases
+1. **STARTUP** (0% – 5%), 2. **TAKEOFF** (5% – 10%), 3. **CLIMB** (10% – 25%), 4. **CRUISE** (25% – 55%), 5. **MANEUVER** (55% – 70%), 6. **CRUISE** (70% – 85%), 7. **DESCENT** (85% – 95%), 8. **LANDING** (95% – 100%).
 
-1. **STARTUP** (0% – 5%): Engine crank, idle spool-up (~1200 RPM), alternator bus charging (~13.8V).
-2. **TAKEOFF** (5% – 10%): Maximum throttle (1.00), peak RPM (~5600 RPM), high fuel flow (~42 L/h).
-3. **CLIMB** (10% – 25%): High power climb (0.85 throttle), altitude temperature lapse.
-4. **CRUISE** (25% – 55%): Steady fuel economy cruise (0.65 throttle, ~4600 RPM).
-5. **MANEUVER** (55% – 70%): Dynamic throttle variations (0.75 avg) simulating tactical maneuvers.
-6. **CRUISE** (70% – 85%): Return to steady cruise altitude.
-7. **DESCENT** (85% – 95%): Reduced throttle (0.30, ~3000 RPM), thermal cooling.
-8. **LANDING** (95% – 100%): Idle touchdown (0.15 throttle, ~1500 RPM) and shutdown.
-
----
-
-## 5. Injected Fault Scenarios
-
-The simulator supports 5 reproducible scenario configurations (starting progressively at 30% mission duration):
-
+### Fault Scenarios
 1. **`normal`**: Healthy baseline mission telemetry.
-2. **`overheating`**: Simulated cooling air duct blockage / lean mixture leading to gradual increases in CHT (+65°C), EGT (+85°C), and Oil Temperature (+28°C).
-3. **`lubrication_fault`**: Simulated oil pump degradation / oil leak causing oil pressure loss (-34 psi down to ~15 psi) and excessive oil temperature rise (+36°C).
-4. **`vibration_anomaly`**: Cylinder misfire or propeller imbalance causing elevated vibration (+0.70g) and RPM rotational jitter.
-5. **`sensor_drift`**: Introduces a gradual linear bias (+65°C) strictly into a single targeted sensor (e.g., CHT) while underlying physical engine parameters (EGT, Oil Temp, RPM, Oil Press) remain **completely normal**. This enables downstream residual analysis to isolate sensor faults from actual engine failures.
+2. **`overheating`**: Cooling airflow blockage / lean fuel mixture (CHT $+65^\circ\text{C}$, EGT $+85^\circ\text{C}$, Oil Temp $+28^\circ\text{C}$).
+3. **`lubrication_fault`**: Oil pump degradation / leak (Oil Press $-34\text{ psi}$ drop, Oil Temp $+36^\circ\text{C}$ rise).
+4. **`vibration_anomaly`**: Cylinder misfire / propeller unbalance ($+0.70\text{ g}$ vibration rise & RPM jitter).
+5. **`sensor_drift`**: Isolated linear bias ($+65^\circ\text{C}$) strictly on CHT sensor probe while correlated physics remain nominal.
 
 ---
 
-## 6. Project Structure
+## 5. Project Structure
 
 ```
 aerovigil-dt/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── config.py                      # Telemetry schema, bounds, nominal std deviations
+├── config.py                      # Telemetry schema, bounds, thresholds, signal weights
 ├── src/
-│   ├── __init__.py                # Package exports (generate_telemetry, EngineSimulator, DigitalTwin)
+│   ├── __init__.py                # Package exports
 │   ├── simulator.py               # Synthetic Telemetry Simulator
-│   └── digital_twin.py            # Physics-Informed Digital Twin & Residual Engine
+│   ├── digital_twin.py            # Physics-Informed Digital Twin & Residual Engine
+│   └── residual_analysis.py       # Residual Analyzer, Anomaly Detector & Classifier
 ├── data/
 │   ├── README.md                  # Dataset specifications & disclaimers
 │   ├── normal.csv                 # 20-min normal mission telemetry (1200 rows)
@@ -115,60 +114,69 @@ aerovigil-dt/
 ├── scripts/
 │   ├── generate_datasets.py       # Script to generate CSV datasets in data/
 │   ├── validate_visuals.py        # Simulator visual validation script
-│   └── validate_digital_twin.py   # Digital Twin validation & plotting script
+│   ├── validate_digital_twin.py   # Digital Twin validation & plotting script
+│   └── validate_fault_detection.py# Fault detection, confusion matrix & diagnostic plotting
 ├── tests/
 │   ├── test_simulator.py          # Phase 1 simulator test suite (10 tests)
-│   └── test_digital_twin.py       # Phase 2 Digital Twin test suite (9 tests)
+│   ├── test_digital_twin.py       # Phase 2 Digital Twin test suite (9 tests)
+│   └── test_residual_analysis.py  # Phase 3 Residual Analysis test suite (8 tests)
 └── docs/
     ├── telemetry_spec.md          # Telemetry signal & physics specification
     ├── digital_twin_model.md      # Digital Twin model equations & residual specification
+    ├── residual_analysis.md       # Residual analysis, rule signatures & severity specification
     └── plots/
         ├── telemetry_comparison.png     # Simulator scenario visual plots
-        └── digital_twin_validation.png  # Digital Twin expected vs actual residual plots
+        ├── digital_twin_validation.png  # Digital Twin expected vs actual residual plots
+        └── residual_analysis_validation.png # Anomaly score, residual signature & fault timeline plots
 ```
 
 ---
 
-## 7. Running the Digital Twin & Generating Data
+## 6. Running the Pipeline & Generating Data
 
 ### Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Digital Twin Python API Example
+### Python API Example
 ```python
 from src.simulator import generate_telemetry
 from src.digital_twin import DigitalTwin
+from src.residual_analysis import ResidualAnalyzer
 
 # 1. Generate telemetry (e.g., overheating scenario)
 df = generate_telemetry(scenario="overheating", duration_minutes=20.0, seed=42)
 
 # 2. Predict expected engine states and compute residuals
 twin = DigitalTwin()
-augmented_df = twin.predict_expected_state(df)
+df_dt = twin.predict_expected_state(df)
 
-# Inspect observed vs expected CHT and residual
-print(augmented_df[["CHT", "expected_CHT", "residual_CHT", "normalized_residual_CHT"]].tail())
+# 3. Analyze residuals and classify faults
+analyzer = ResidualAnalyzer()
+df_diag = analyzer.analyze(df_dt)
+
+# Inspect final diagnostic output
+final = df_diag.iloc[-1]
+print(f"Fault Type  : {final['fault_type']}")
+print(f"Score       : {final['anomaly_score']} ({final['anomaly_level']})")
+print(f"Severity    : {final['severity']}")
+print(f"Evidence    : {final['evidence_score']}")
+print(f"Contributors: {final['contributing_signals']}")
+print(f"Reasoning   : {final['reasoning']}")
 ```
 
-### Generate CSV Datasets
-To regenerate all 5 CSV datasets into `data/`:
+### Run Fault Detection Validation & Confusion Matrix
+To execute the fault detection evaluation, confusion matrix, and generate diagnostic plots:
 ```bash
-python scripts/generate_datasets.py
-```
-
-### Generate Digital Twin Validation Plot
-To produce actual vs expected comparison plots in `docs/plots/digital_twin_validation.png`:
-```bash
-python scripts/validate_digital_twin.py
+python scripts/validate_fault_detection.py
 ```
 
 ---
 
-## 8. Running Automated Tests
+## 7. Running Automated Tests
 
-Run the full pytest suite (19 test cases) from the project root:
+Run the full pytest suite (27 test cases across Phases 1, 2, and 3):
 
 ```bash
 python -m pytest tests/ -v

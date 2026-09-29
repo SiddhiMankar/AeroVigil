@@ -138,3 +138,38 @@ NOMINAL_STD_DEV: Dict[str, float] = {
     "battery_voltage": 0.08,
 }
 
+# Phase 3 Residual Analysis & Anomaly Detection Parameters
+WARNING_THRESHOLD_STD: float = 2.0
+ANOMALY_THRESHOLD_STD: float = 3.0
+CRITICAL_THRESHOLD_STD: float = 4.5
+DEFAULT_PERSISTENCE_WINDOW: int = 3
+
+FAULT_TYPES: List[str] = [
+    "NORMAL",
+    "OVERHEATING",
+    "LUBRICATION_FAULT",
+    "VIBRATION_ANOMALY",
+    "SENSOR_DRIFT",
+    "UNKNOWN_ANOMALY",
+]
+
+SEVERITY_LEVELS: List[str] = [
+    "NORMAL",
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "CRITICAL",
+]
+
+SIGNAL_WEIGHTS: Dict[str, float] = {
+    "CHT": 1.5,
+    "EGT": 1.5,
+    "oil_pressure": 1.5,
+    "oil_temperature": 1.2,
+    "vibration": 1.2,
+    "RPM": 1.0,
+    "fuel_flow": 0.8,
+    "battery_voltage": 0.5,
+}
+
+
