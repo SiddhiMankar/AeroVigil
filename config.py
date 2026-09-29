@@ -109,3 +109,32 @@ FAULT_SCENARIOS = [
     "vibration_anomaly",
     "sensor_drift",
 ]
+
+# Digital Twin Modeled Signals & Residual Specs
+MODELED_SIGNALS: List[str] = [
+    "RPM",
+    "CHT",
+    "EGT",
+    "oil_pressure",
+    "oil_temperature",
+    "fuel_flow",
+    "vibration",
+    "battery_voltage",
+]
+
+EXPECTED_COLUMNS: List[str] = [f"expected_{sig}" for sig in MODELED_SIGNALS]
+RESIDUAL_COLUMNS: List[str] = [f"residual_{sig}" for sig in MODELED_SIGNALS]
+NORMALIZED_RESIDUAL_COLUMNS: List[str] = [f"normalized_residual_{sig}" for sig in MODELED_SIGNALS]
+
+# Nominal standard deviations under healthy normal operation (for normalized residual scoring)
+NOMINAL_STD_DEV: Dict[str, float] = {
+    "RPM": 35.0,
+    "CHT": 3.0,
+    "EGT": 8.0,
+    "oil_pressure": 1.5,
+    "oil_temperature": 1.2,
+    "fuel_flow": 0.5,
+    "vibration": 0.025,
+    "battery_voltage": 0.08,
+}
+

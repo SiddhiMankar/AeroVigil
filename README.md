@@ -1,14 +1,39 @@
-# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phase 1)
+# AeroVigil DT — AI-Enabled Real-Time Digital Twin System (Phases 1 & 2)
 
 **AeroVigil DT** is an AI-enabled real-time Digital Twin architecture for health monitoring, fault prediction, and mission reliability enhancement of Aero-Piston Engines used in Medium-Altitude Long-Endurance (MALE) Unmanned Aerial Vehicles (UAVs).
 
 ---
 
-## 1. Prototype Scope (Phase 1)
+## Architecture Overview
 
-This repository contains **Phase 1: Repository Foundation + Synthetic Aero-Piston Engine Telemetry Simulator**.
+```text
+  Synthetic Aero-Engine Telemetry
+(Simulator: RPM, CHT, EGT, Oil Press/Temp, Vib, Batt)
+                 │
+                 ▼
+  Operating Conditions (Throttle, Ambient Temp, Phase)
+                 │
+                 ▼
+     Physics-Based Digital Twin
+    (Expected-State Surrogate Model)
+                 │
+                 ▼
+       Residual Generation Engine
+    (Residual = Observed - Expected)
+                 │
+                 ▼
+     [Phase 3: Residual Analysis & Anomaly Detection]
+```
 
-Phase 1 establishes a clean, reproducible repository foundation and implements a physics-correlated synthetic telemetry generator. This generator models flight mission profiles and injects controlled thermal, mechanical, lubrication, and sensor fault scenarios to produce time-series datasets consumed by downstream Digital Twin phases (Physics-based Expected State Model, Residual Analysis, Anomaly Detection, Fault Classification, RUL Estimation, and Mission Risk Assessment).
+---
+
+## 1. Prototype Scope
+
+* **Phase 1 — Repository Foundation & Synthetic Telemetry Simulator**:
+  Establishes a clean, reproducible repository foundation and implements a physics-correlated synthetic engine telemetry generator supporting 8 flight mission phases and 5 controlled fault scenarios.
+
+* **Phase 2 — Physics-Based Expected-State Model / Digital Twin**:
+  Implements an independent reduced-order physics-informed surrogate estimator (`src/digital_twin.py`). The Digital Twin predicts nominal expected engine states (`expected_*`) based strictly on healthy operating conditions (`throttle`, `ambient_temperature`, `mission_phase`), without inspecting fault labels. It computes raw (`residual_*`) and normalized (`normalized_residual_*`) residuals to enable downstream anomaly detection and sensor vs physical fault isolation.
 
 ---
 
@@ -21,7 +46,7 @@ Phase 1 establishes a clean, reproducible repository foundation and implements a
 
 ## 3. Telemetry Signal Definitions & Units
 
-The simulator generates 13 time-series signals sampled at configurable rates (default 1 Hz):
+The system models 13 time-series signals sampled at configurable rates (default 1 Hz):
 
 | Signal | Unit | Description |
 |---|---|---|
@@ -75,44 +100,56 @@ aerovigil-dt/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── config.py
+├── config.py                      # Telemetry schema, bounds, nominal std deviations
 ├── src/
-│   ├── __init__.py
-│   └── simulator.py
+│   ├── __init__.py                # Package exports (generate_telemetry, EngineSimulator, DigitalTwin)
+│   ├── simulator.py               # Synthetic Telemetry Simulator
+│   └── digital_twin.py            # Physics-Informed Digital Twin & Residual Engine
 ├── data/
-│   ├── README.md
-│   ├── normal.csv
-│   ├── overheating.csv
-│   ├── lubrication_fault.csv
-│   ├── vibration_fault.csv
-│   └── sensor_drift.csv
+│   ├── README.md                  # Dataset specifications & disclaimers
+│   ├── normal.csv                 # 20-min normal mission telemetry (1200 rows)
+│   ├── overheating.csv            # Thermal degradation telemetry (1200 rows)
+│   ├── lubrication_fault.csv      # Lubrication pressure loss telemetry (1200 rows)
+│   ├── vibration_fault.csv        # Mechanical vibration & jitter telemetry (1200 rows)
+│   └── sensor_drift.csv           # Isolated sensor bias telemetry (1200 rows)
 ├── scripts/
-│   ├── generate_datasets.py
-│   └── validate_visuals.py
+│   ├── generate_datasets.py       # Script to generate CSV datasets in data/
+│   ├── validate_visuals.py        # Simulator visual validation script
+│   └── validate_digital_twin.py   # Digital Twin validation & plotting script
 ├── tests/
-│   └── test_simulator.py
+│   ├── test_simulator.py          # Phase 1 simulator test suite (10 tests)
+│   └── test_digital_twin.py       # Phase 2 Digital Twin test suite (9 tests)
 └── docs/
-    ├── telemetry_spec.md
+    ├── telemetry_spec.md          # Telemetry signal & physics specification
+    ├── digital_twin_model.md      # Digital Twin model equations & residual specification
     └── plots/
-        └── telemetry_comparison.png
+        ├── telemetry_comparison.png     # Simulator scenario visual plots
+        └── digital_twin_validation.png  # Digital Twin expected vs actual residual plots
 ```
 
 ---
 
-## 7. Running the Simulator & Generating Data
+## 7. Running the Digital Twin & Generating Data
 
 ### Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Python API Example
+### Digital Twin Python API Example
 ```python
 from src.simulator import generate_telemetry
+from src.digital_twin import DigitalTwin
 
-# Generate overheating scenario with seed 42
+# 1. Generate telemetry (e.g., overheating scenario)
 df = generate_telemetry(scenario="overheating", duration_minutes=20.0, seed=42)
-print(df.head())
+
+# 2. Predict expected engine states and compute residuals
+twin = DigitalTwin()
+augmented_df = twin.predict_expected_state(df)
+
+# Inspect observed vs expected CHT and residual
+print(augmented_df[["CHT", "expected_CHT", "residual_CHT", "normalized_residual_CHT"]].tail())
 ```
 
 ### Generate CSV Datasets
@@ -121,17 +158,17 @@ To regenerate all 5 CSV datasets into `data/`:
 python scripts/generate_datasets.py
 ```
 
-### Generate Visual Validation Plot
-To produce signal comparison plots in `docs/plots/`:
+### Generate Digital Twin Validation Plot
+To produce actual vs expected comparison plots in `docs/plots/digital_twin_validation.png`:
 ```bash
-python scripts/validate_visuals.py
+python scripts/validate_digital_twin.py
 ```
 
 ---
 
 ## 8. Running Automated Tests
 
-Run the full pytest suite from the project root:
+Run the full pytest suite (19 test cases) from the project root:
 
 ```bash
 python -m pytest tests/ -v
