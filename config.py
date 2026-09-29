@@ -172,4 +172,63 @@ SIGNAL_WEIGHTS: Dict[str, float] = {
     "battery_voltage": 0.5,
 }
 
+# Phase 4 Health Index Configuration Parameters
+HEALTH_STATE_THRESHOLDS: Dict[str, float] = {
+    "HEALTHY": 90.0,
+    "DEGRADED": 75.0,
+    "WARNING": 50.0,
+    "SEVERE": 25.0,
+    "CRITICAL": 0.0,
+}
+
+HEALTH_PENALTY_WEIGHTS: Dict[str, float] = {
+    "anomaly_score": 0.40,
+    "severity": 0.30,
+    "persistence": 0.15,
+    "fault_type": 0.15,
+}
+
+SEVERITY_PENALTY_MAP: Dict[str, float] = {
+    "NORMAL": 0.0,
+    "LOW": 10.0,
+    "MEDIUM": 25.0,
+    "HIGH": 50.0,
+    "CRITICAL": 85.0,
+}
+
+FAULT_TYPE_PENALTY_MAP: Dict[str, float] = {
+    "NORMAL": 0.0,
+    "SENSOR_DRIFT": 20.0,
+    "VIBRATION_ANOMALY": 35.0,
+    "OVERHEATING": 60.0,
+    "LUBRICATION_FAULT": 75.0,
+    "UNKNOWN_ANOMALY": 40.0,
+}
+
+HEALTH_SMOOTHING_ALPHA: float = 0.15
+
+# Phase 4 Prototype RUL Estimator Configuration Parameters
+RUL_WINDOW_SECONDS: float = 45.0
+CRITICAL_HEALTH_THRESHOLD: float = 25.0
+MIN_DEGRADATION_RATE: float = -0.01  # health points per second threshold to trigger RUL calculation
+
+# Phase 4 Mission Risk Model Configuration Parameters
+MISSION_PHASE_MULTIPLIERS: Dict[str, float] = {
+    "STARTUP": 0.8,
+    "TAKEOFF": 1.5,
+    "CLIMB": 1.3,
+    "CRUISE": 1.0,
+    "MANEUVER": 1.2,
+    "DESCENT": 1.2,
+    "LANDING": 1.4,
+}
+
+RISK_LEVEL_THRESHOLDS: Dict[str, float] = {
+    "LOW": 20.0,
+    "MODERATE": 45.0,
+    "HIGH": 70.0,
+    "CRITICAL": 100.0,
+}
+
+
 
