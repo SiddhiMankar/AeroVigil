@@ -3,7 +3,8 @@ AeroVigil DT - Configuration & Spec Parameters
 Synthetic Aero-Piston Engine Telemetry Simulator Configuration
 """
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 
 # Sensor Definitions & Units Schema
 TELEMETRY_SIGNALS: Dict[str, Dict[str, str]] = {
@@ -232,3 +233,59 @@ RISK_LEVEL_THRESHOLDS: Dict[str, float] = {
 
 
 
+# =============================================================================
+# NASA C-MAPSS FD001 Integration Configuration
+# =============================================================================
+# These constants control the FD001 dataset adapter and PHM validation pipeline.
+# They are SEPARATE from the aero-piston-engine physics model above.
+#
+# IMPORTANT: FD001 (turbofan HPC degradation) is used ONLY to validate
+# generic PHM capabilities. It does NOT calibrate or replace the
+# AeroVigil piston-engine Digital Twin or mission-reliability layer.
+# =============================================================================
+
+# Path to the NASA C-MAPSS dataset directory (relative to repo root)
+CMAPSS_DATASET_DIR: str = "official_dataset_NASA"
+
+# Default FD001 dataset subset to use
+CMAPSS_FD_ID: str = "FD001"
+
+# RUL label cap for training data (cycles)
+# Standard PHM practice: cap early-trajectory RUL at 125 to reduce label noise
+# Reference: Saxena et al. (2008), "Damage Propagation Modeling"
+CMAPSS_RUL_CAP: int = 125
+
+# Number of early cycles per engine defining the "healthy baseline"
+CMAPSS_N_HEALTHY_CYCLES: int = 30
+
+# Sliding window size (cycles) for RUL feature extraction
+CMAPSS_WINDOW_SIZE: int = 15
+
+# Fraction of training engines used for model training (rest = validation)
+# Split is ALWAYS by engine ID, never by individual rows
+CMAPSS_TRAIN_ENGINE_FRACTION: float = 0.80
+
+# Anomaly scoring thresholds for FD001 normalized sensor residuals
+# (analogous to WARNING_THRESHOLD_STD etc. used in AeroVigil ResidualAnalyzer)
+CMAPSS_WARNING_THRESHOLD_Z: float = 2.0
+CMAPSS_ANOMALY_THRESHOLD_Z: float = 3.0
+CMAPSS_CRITICAL_THRESHOLD_Z: float = 5.0
+CMAPSS_PERSISTENCE_WINDOW: int = 5
+
+# GBR hyperparameters for the RUL model
+CMAPSS_GBR_PARAMS: Dict[str, Any] = {
+    "n_estimators": 300,
+    "max_depth": 5,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "min_samples_leaf": 5,
+    "random_state": 42,
+}
+
+# Dashboard: approximate cycle-to-minute conversion for display only
+# FD001 cycles do not directly map to real time; this is for UI display
+# of the RUL status, NOT for any physical claim.
+CMAPSS_CYCLE_TO_MINUTES_DISPLAY: float = 1.0  # 1 cycle ≈ 1 minute (display only)
+
+# Constant sensor std threshold (sensors below this are dropped)
+CMAPSS_CONSTANT_SENSOR_STD_THRESHOLD: float = 0.001

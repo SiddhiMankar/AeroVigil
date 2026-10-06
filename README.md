@@ -68,6 +68,9 @@
 * **Phase 6 — Final Engineering Hardening, Validation Evidence & SIH Submission Readiness**:
   Implements Streamlit state caching (`@st.cache_data` in `src/dashboard_utils.py`), a deterministic CLI demonstration script (`scripts/run_demo.py`), a 2-minute evaluator walkthrough guide (`docs/demo_walkthrough.md`), an empirical cross-scenario validation summary (`docs/validation_summary.md`), and verifies repository consistency and end-to-end defensibility.
 
+* **C-MAPSS FD001 PHM Validation**:
+  Integrates the NASA C-MAPSS FD001 turbofan benchmark dataset (`official_dataset_NASA/`) to quantitatively validate the generic prognostic and health management (PHM) capabilities of the AeroVigil architecture. This includes a data-driven degradation baseline, health index mapping, and ML-based RUL prediction, all accessible via a dedicated dashboard tab.
+
 ---
 
 ## 2. Synthetic Data & Prototype Disclaimer
@@ -94,12 +97,17 @@ python -m pytest tests/ -v
 python scripts/run_demo.py
 ```
 
-### 3. Launch Streamlit Dashboard
+### 3. Run FD001 PHM Validation Training
+```bash
+python scripts/train_fd001_rul.py
+```
+
+### 4. Launch Streamlit Dashboard
 ```bash
 streamlit run app.py
 ```
 
-Upon launching, the dashboard defaults to **Overheating Thermal Fault** (Seed 42). Use the sidebar to switch scenarios, adjust mission duration, step through the **Mission Replay Slider**, or inspect the **Cross-Scenario Evaluation Matrix**. Refer to [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) for step-by-step evaluator instructions.
+Upon launching, the dashboard defaults to **Overheating Thermal Fault** (Seed 42). Use the sidebar to switch scenarios, adjust mission duration, step through the **Mission Replay Slider**, or inspect the **Cross-Scenario Evaluation Matrix**. A dedicated **FD001 PHM Validation** tab is also available to explore the C-MAPSS benchmark results. Refer to [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) for step-by-step evaluator instructions.
 
 ---
 
@@ -144,6 +152,11 @@ aerovigil-dt/
 │   ├── mission_risk.py            # Phase-Aware Mission Risk & Advisory Model
 │   ├── health_risk_pipeline.py    # Integrated End-to-End AeroVigil Pipeline
 │   └── dashboard_utils.py         # Dashboard Helper Utilities & Cached Processing
+├── ingestion/                     # C-MAPSS FD001 Data Ingestion & ML Pipeline
+│   ├── cmapss_loader.py           # FD001 Dataset Loader & RUL Labeler
+│   ├── cmapss_preprocessor.py     # EDA, Sensor Selection & Normalization
+│   ├── cmapss_adapter.py          # Data-Driven Residual Bridge to AeroVigil
+│   └── cmapss_rul_model.py        # Gradient Boosting RUL Regressor
 ├── data/
 │   ├── README.md                  # Dataset specifications & disclaimers
 │   ├── normal.csv                 # 20-min normal mission telemetry (1200 rows)
@@ -153,6 +166,7 @@ aerovigil-dt/
 │   └── sensor_drift.csv           # Isolated sensor bias telemetry (1200 rows)
 ├── scripts/
 │   ├── run_demo.py                # Reproducible CLI demonstration script
+│   ├── train_fd001_rul.py         # C-MAPSS FD001 PHM Validation Training Pipeline
 │   ├── generate_datasets.py       # Script to generate CSV datasets in data/
 │   ├── validate_visuals.py        # Simulator visual validation script
 │   ├── validate_digital_twin.py   # Digital Twin validation & plotting script
@@ -163,7 +177,8 @@ aerovigil-dt/
 │   ├── test_digital_twin.py       # Phase 2 Digital Twin test suite (9 tests)
 │   ├── test_residual_analysis.py  # Phase 3 Residual Analysis test suite (8 tests)
 │   ├── test_health_rul_risk.py    # Phase 4 Health Index, RUL & Risk test suite (10 tests)
-│   └── test_dashboard_pipeline.py # Phase 5 Dashboard integration test suite (10 tests)
+│   ├── test_dashboard_pipeline.py # Phase 5 Dashboard integration test suite (10 tests)
+│   └── test_cmapss_loader.py      # C-MAPSS FD001 Loader test suite (24 tests)
 └── docs/
     ├── demo_walkthrough.md        # 2-minute evaluator walkthrough guide
     ├── validation_summary.md      # Phase 6 empirical cross-scenario validation summary
@@ -210,7 +225,7 @@ print(f"Advisory      : {final['mission_recommendation']}")
 
 ## 7. Running Automated Tests
 
-Run the full pytest suite (47 test cases across Phases 1–5):
+Run the full pytest suite (71 test cases):
 
 ```bash
 python -m pytest tests/ -v

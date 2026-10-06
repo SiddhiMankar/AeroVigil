@@ -1,0 +1,40 @@
+{
+  "test_mae": 15.499515544907172,
+  "test_rmse": 21.166227142061132,
+  "test_r2": 0.7405657199424175,
+  "test_nasa_score": 2063.429497892588,
+  "val_mae": 15.113756206526677,
+  "val_rmse": 20.166157564641104,
+  "n_engines_train": 80,
+  "n_engines_val": 20,
+  "n_sensors_retained": 15,
+  "sensors_dropped": [
+    "s1",
+    "s5",
+    "s10",
+    "s16",
+    "s18",
+    "s19"
+  ],
+  "sensors_retained": [
+    "s2",
+    "s3",
+    "s4",
+    "s6",
+    "s7",
+    "s8",
+    "s9",
+    "s11",
+    "s12",
+    "s13",
+    "s14",
+    "s15",
+    "s17",
+    "s20",
+    "s21"
+  ],
+  "window_size": 15,
+  "rul_cap": 125,
+  "model": "GradientBoostingRegressor",
+  "disclaimer": "Results validate generic PHM capabilities on C-MAPSS FD001 turbofan data. Does NOT directly validate the AeroVigil aero-piston-engine physics model or UAV mission risk layer."
+}
