@@ -294,6 +294,34 @@ with tab_main:
  st.markdown("<br>", unsafe_allow_html=True)
 
  # ---------------------------------------------------------------------------
+ # 5.5 Interactive 3D Digital Twin
+ # ---------------------------------------------------------------------------
+ st.subheader("Interactive 3D Digital Twin")
+ st.caption("Real-time visual representation of engine state, fault localization, and operating conditions.")
+ 
+ col_3d, col_info = st.columns([3, 1])
+ 
+ with col_3d:
+     from src.engine_3d.component import engine_3d_component
+     engine_3d_component(snapshot=snapshot, key="engine_viewer")
+     
+ with col_info:
+     st.markdown("#### Engine State")
+     st.write(f"**Health Index**: {snapshot['health_index']:.1f}")
+     st.write(f"**RUL**: {snapshot['rul_display']}")
+     st.write(f"**RPM**: {snapshot['RPM']:.0f}")
+     st.write(f"**CHT**: {snapshot['CHT']:.1f} °C")
+     st.write(f"**EGT**: {snapshot['EGT']:.1f} °C")
+     st.write(f"**Oil Press**: {snapshot['oil_pressure']:.1f} psi")
+     st.write(f"**Vibration**: {snapshot['vibration']:.3f} g")
+     st.markdown("---")
+     st.write(f"**Status**: `{snapshot['health_state']}`")
+     st.write(f"**Fault**: `{snapshot['fault_type']}`")
+     st.write(f"**Phase**: `{snapshot['mission_phase']}`")
+
+ st.markdown("<br>", unsafe_allow_html=True)
+
+ # ---------------------------------------------------------------------------
  # 6. Live Telemetry Panel
  # ---------------------------------------------------------------------------
  st.subheader("1. Live Engine Sensor Telemetry")

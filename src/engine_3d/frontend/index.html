@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AeroVigil 3D Engine</title>
+    <style> 
+        body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; } 
+        #container { width: 100vw; height: 100vh; display: none; }
+        #fallback { display: block; color: #94a3b8; padding: 30px; text-align: center; border: 1px dashed #334155; border-radius: 8px; margin: 20px; background: #0f172a; }
+        #fallback h3 { color: #f8fafc; margin-top: 0; }
+        #fallback code { background: #1e293b; padding: 4px 8px; border-radius: 4px; color: #38bdf8; font-size: 14px; }
+        #overlay { position: absolute; top: 10px; left: 10px; color: white; pointer-events: none; text-shadow: 1px 1px 2px black; font-size: 14px; display: none; }
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+<body>
+    <div id="fallback">
+        <h3>3D ENGINE MODEL</h3>
+        <p>Awaiting engine asset</p>
+        <p>Place: <code>assets/3d/aerovigil_engine.glb</code></p>
+        <p>The Digital Twin telemetry interface is ready.</p>
+    </div>
+    <div id="container"></div>
+    <div id="overlay"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let engineModel = null;
+        let rotatingGroup = new THREE.Group();
+        let targetRPM = 0;
+        let currentRotation = 0;
+        let currentGlbUri = null;
+
+        const COLOR_NORMAL = 0xffffff;
+        const COLOR_WARNING = 0xffaa00;
+        const COLOR_CRITICAL = 0xff0000;
+
+        function initThree() {
+            const container = document.getElementById('container');
+            scene = new THREE.Scene();
+            // Transparent background for seamless Streamlit integration
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(4, 3, 5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(10, 10, 10);
+            scene.add(dirLight);
+
+            const backLight = new THREE.DirectionalLight(0xaabbff, 0.8);
+            backLight.position.set(-10, 5, -10);
+            scene.add(backLight);
+
+            scene.add(rotatingGroup);
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Animate RPM
+            if (targetRPM > 0 && engineModel) {
+                // Approximate visual rotation (scale down RPM to keep it visually trackable)
+                // 1000 RPM is very fast, so we cap visual speed to avoid strobing
+                let visualRpm = Math.min(targetRPM, 300);
+                const rotSpeed = (visualRpm / 60) * Math.PI * 2 * (1/60); 
+                currentRotation -= rotSpeed; // Rotate backwards or forwards depending on axis
+                
+                // For a generic engine model where we don't know the exact mesh hierarchy yet,
+                // we rotate the child meshes named "shaft" or "prop". 
+                // If none exist, we won't rotate the whole engine as that looks wrong.
+                let rotatedSomething = false;
+                engineModel.traverse((child) => {
+                    if (child.isMesh && child.name) {
+                        const name = child.name.toLowerCase();
+                        if (name.includes('shaft') || name.includes('propeller') || name.includes('crank')) {
+                            child.rotation.z = currentRotation;
+                            rotatedSomething = true;
+                        }
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function applyMaterialState(object, state) {
+            if (!object.isMesh) return;
+            
+            if (!object.userData.originalMaterial) {
+                // Must clone to avoid sharing materials across unrelated parts
+                object.userData.originalMaterial = object.material ? object.material.clone() : new THREE.MeshStandardMaterial();
+            }
+
+            if (state === 'NORMAL') {
+                object.material = object.userData.originalMaterial;
+                if (object.material.emissive) object.material.emissive.setHex(0x000000);
+            } else if (state === 'WARNING') {
+                const mat = object.userData.originalMaterial.clone();
+                if (mat.emissive) {
+                    mat.emissive.setHex(COLOR_WARNING);
+                    mat.emissiveIntensity = 0.5;
+                }
+                object.material = mat;
+            } else if (state === 'CRITICAL') {
+                const mat = object.userData.originalMaterial.clone();
+                if (mat.emissive) {
+                    mat.emissive.setHex(COLOR_CRITICAL);
+                    mat.emissiveIntensity = 0.8;
+                }
+                object.material = mat;
+            }
+        }
+
+        function updateEngineState(snapshot) {
+            if (!engineModel) return;
+
+            targetRPM = snapshot.RPM || 0;
+            
+            const faultType = snapshot.fault_type || 'NORMAL';
+            const severity = snapshot.severity || 'NORMAL'; 
+            
+            let visualState = 'NORMAL';
+            if (severity === 'MEDIUM' || severity === 'HIGH' || severity === 'WARNING') visualState = 'WARNING';
+            if (severity === 'CRITICAL') visualState = 'CRITICAL';
+            
+            // Map the health index strictly as requested: < 75 warning, < 50 critical if severity missing
+            const health = snapshot.health_index;
+            if (health < 50) visualState = 'CRITICAL';
+            else if (health < 75) visualState = 'WARNING';
+
+            // Reset all
+            engineModel.traverse((child) => {
+                applyMaterialState(child, 'NORMAL');
+            });
+
+            if (faultType === 'NORMAL') return;
+
+            // Map faults to components based on naming heuristics
+            let foundAffected = false;
+            engineModel.traverse((child) => {
+                if (!child.isMesh || !child.name) return;
+                const name = child.name.toLowerCase();
+                let isAffected = false;
+
+                if (faultType === 'OVERHEATING') {
+                    if (name.includes('cylinder') || name.includes('head') || name.includes('exhaust')) isAffected = true;
+                } else if (faultType === 'LUBRICATION_FAULT') {
+                    if (name.includes('oil') || name.includes('sump') || name.includes('crank')) isAffected = true;
+                } else if (faultType === 'VIBRATION_ANOMALY') {
+                    if (name.includes('shaft') || name.includes('propeller') || name.includes('mount') || name.includes('bearing')) isAffected = true;
+                } else {
+                    // SENSOR_DRIFT or UNKNOWN_ANOMALY
+                    if (name.includes('case') || name.includes('body') || name.includes('sensor')) isAffected = true;
+                }
+
+                if (isAffected) {
+                    applyMaterialState(child, visualState);
+                    foundAffected = true;
+                }
+            });
+            
+            // If the model is just a single mesh or names didn't match, apply to whole model
+            if (!foundAffected) {
+                engineModel.traverse((child) => applyMaterialState(child, visualState));
+            }
+        }
+
+        function onStreamlitMessage(event) {
+            if (event.data.type !== "streamlit:render") return;
+            
+            const args = event.data.args;
+            if (!args) return;
+
+            const snapshot = args.snapshot;
+            const glbUri = args.glb_uri;
+
+            if (glbUri) {
+                document.getElementById('fallback').style.display = 'none';
+                document.getElementById('container').style.display = 'block';
+
+                if (glbUri !== currentGlbUri) {
+                    currentGlbUri = glbUri;
+                    const loader = new GLTFLoader();
+                    loader.load(glbUri, function(gltf) {
+                        if (engineModel) scene.remove(engineModel);
+                        
+                        engineModel = gltf.scene;
+                        
+                        // Center and scale model
+                        const box = new THREE.Box3().setFromObject(engineModel);
+                        const center = box.getCenter(new THREE.Vector3());
+                        const size = box.getSize(new THREE.Vector3());
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const scale = 3.5 / maxDim; // Fit well in the iframe
+                        
+                        engineModel.scale.setScalar(scale);
+                        engineModel.position.sub(center.multiplyScalar(scale));
+                        
+                        scene.add(engineModel);
+                        updateEngineState(snapshot);
+
+                    }, undefined, function(error) {
+                        console.error("Error loading GLB:", error);
+                        // If it fails to load, fallback
+                        document.getElementById('fallback').style.display = 'block';
+                        document.getElementById('container').style.display = 'none';
+                    });
+                } else {
+                    updateEngineState(snapshot);
+                }
+            } else {
+                document.getElementById('fallback').style.display = 'block';
+                document.getElementById('container').style.display = 'none';
+            }
+
+            // Tell Streamlit the frame height
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setFrameHeight",
+                height: 450
+            }, "*");
+        }
+
+        window.addEventListener("message", onStreamlitMessage);
+
+        window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: "streamlit:setComponentReady",
+            apiVersion: 1,
+        }, "*");
+
+        initThree();
+    </script>
+</body>
+</html>
